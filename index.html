@@ -249,6 +249,67 @@
     z-index: 999; transition: transform 0.3s; pointer-events: none;
   }
   .toast.show { transform: translateX(-50%) translateY(0); }
+
+
+  /* ===== PENDENTES ===== */
+  .pendente-card {
+    background: white; border-radius: 14px; padding: 12px;
+    margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border-left: 4px solid #ff9800;
+  }
+  .pendente-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .pendente-cliente { font-size: 0.9rem; font-weight: 700; color: #333; }
+  .pendente-total { font-size: 1rem; font-weight: 700; color: #e63946; }
+  .pendente-hora { font-size: 0.7rem; color: #aaa; margin-bottom: 6px; }
+  .pendente-itens { font-size: 0.78rem; color: #555; margin-bottom: 10px; line-height: 1.5; }
+  .pendente-acoes { display: flex; gap: 8px; }
+  .btn-finalizar-pend {
+    flex: 1; padding: 10px; background: linear-gradient(135deg, #2e7d32, #43a047);
+    color: white; border: none; border-radius: 10px; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  }
+  .btn-cancelar-pend {
+    padding: 10px 14px; background: #ffebee; color: #e63946;
+    border: 1px solid #e63946; border-radius: 10px; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+  }
+  .pendentes-vazio { text-align: center; color: #aaa; font-size: 0.85rem; padding: 32px 16px; }
+  .pendentes-vazio .icon { font-size: 2.5rem; display: block; margin-bottom: 8px; }
+  .resumo-pendentes {
+    background: linear-gradient(135deg, #ff9800, #e65100);
+    color: white; border-radius: 14px; padding: 14px; margin-bottom: 12px;
+    display: flex; justify-content: space-around; text-align: center;
+  }
+  .badge-pendente {
+    background: #fff3e0; color: #e65100;
+    border-radius: 20px; padding: 2px 8px;
+    font-size: 0.68rem; font-weight: 700; margin-left: 4px; vertical-align: middle;
+  }
+  .modal-pag-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 200; align-items: flex-end; justify-content: center;
+  }
+  .modal-pag-overlay.open { display: flex; }
+  .modal-pag {
+    background: white; border-radius: 20px 20px 0 0; padding: 20px;
+    width: 100%; max-width: 500px; animation: slideUp 0.3s ease;
+  }
+  .modal-pag h3 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; color: #333; }
+  .modal-pag .pag-cliente-label { font-size: 0.85rem; color: #666; margin-bottom: 6px; }
+  .modal-pag .pag-total-val { font-size: 1.5rem; font-weight: 700; color: #e63946; margin-bottom: 14px; }
+  .troco-box-modal {
+    background: #fff8e1; border-radius: 12px; padding: 12px;
+    border: 1px solid #ffe082; margin-bottom: 12px; display: none;
+  }
+  .troco-box-modal label { font-size: 0.8rem; font-weight: 600; color: #555; display: block; margin-bottom: 6px; }
+  .troco-box-modal input {
+    width: 100%; padding: 10px; border: 2px solid #ffe082;
+    border-radius: 10px; font-size: 1rem; font-weight: 700; outline: none; background: white;
+  }
+  .troco-box-modal input:focus { border-color: #e63946; }
+  .btn-add-pendente-pedido {
+    width: 100%; padding: 12px; background: #ff9800; color: white;
+    border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700;
+    cursor: pointer; margin-top: 10px;
+  }
 </style>
 </head>
 <body>
@@ -260,6 +321,7 @@
 
 <div class="tabs">
   <button class="tab-btn active" onclick="mudarTab('pedido', this)">🛒 Pedido</button>
+  <button class="tab-btn" onclick="mudarTab('pendentes', this)">⏳ Pendentes<span id="badgePend" class="badge-pendente" style="display:none">0</span></button>
   <button class="tab-btn" onclick="mudarTab('cardapio', this)">📋 Cardápio</button>
   <button class="tab-btn" onclick="mudarTab('historico', this)">📊 Histórico</button>
 </div>
@@ -293,8 +355,17 @@
       <input type="number" id="valorRecebido" placeholder="Ex: 20.00" oninput="calcularTroco()" inputmode="decimal" />
       <div class="troco-resultado" id="trocoResultado"></div>
     </div>
+    <button class="btn-add-pendente-pedido" onclick="adicionarPendente()">⏳ Deixar como Pendente</button>
     <button class="btn-finalizar" onclick="finalizarPedido()">✅ Finalizar Pedido</button>
   </div>
+</div>
+
+<div id="tab-pendentes" class="tab-content">
+  <div class="resumo-pendentes">
+    <div class="resumo-item"><div class="valor" id="resumoPendTotal">R$ 0,00</div><div class="label">Total pendente</div></div>
+    <div class="resumo-item"><div class="valor" id="resumoPendQtd">0</div><div class="label">Em aberto</div></div>
+  </div>
+  <div id="listaPendentes"><div class="pendentes-vazio"><span class="icon">✅</span>Nenhum pedido pendente no momento</div></div>
 </div>
 
 <div id="tab-cardapio" class="tab-content">
@@ -332,6 +403,30 @@
     <div class="modal-btns">
       <button class="btn-cancelar" onclick="fecharModal()">Cancelar</button>
       <button class="btn-salvar" onclick="salvarItem()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PAGAMENTO PENDENTE -->
+<div class="modal-pag-overlay" id="modalPagOverlay">
+  <div class="modal-pag">
+    <h3>💰 Finalizar pedido</h3>
+    <div class="pag-cliente-label" id="modalPagCliente"></div>
+    <div class="pag-total-val" id="modalPagTotal"></div>
+    <div class="pagamento-opcoes" style="margin-top:0;margin-bottom:12px;">
+      <button class="pag-btn" onclick="selecionarPagPend('dinheiro',this)"><span class="pag-icon">💵</span>Dinheiro</button>
+      <button class="pag-btn" onclick="selecionarPagPend('pix',this)"><span class="pag-icon">📱</span>Pix</button>
+      <button class="pag-btn" onclick="selecionarPagPend('cartao',this)"><span class="pag-icon">💳</span>Cartão</button>
+      <button class="pag-btn" onclick="selecionarPagPend('fiado',this)"><span class="pag-icon">📝</span>Fiado</button>
+    </div>
+    <div class="troco-box-modal" id="trocoPendBox">
+      <label>💵 Valor recebido</label>
+      <input type="number" id="valorRecebidoPend" placeholder="Ex: 20.00" oninput="calcularTrocoPend()" inputmode="decimal" />
+      <div class="troco-resultado" id="trocoPendResultado" style="display:none"></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-cancelar" onclick="fecharModalPag()">Cancelar</button>
+      <button class="btn-salvar" onclick="confirmarPagPend()">✅ Confirmar Pagamento</button>
     </div>
   </div>
 </div>
@@ -413,6 +508,152 @@ let confirmCallback = null;
 function salvarProdutos() { localStorage.setItem('lc_produtos', JSON.stringify(produtos)); }
 function salvarHistorico() { localStorage.setItem('lc_historico', JSON.stringify(historico)); }
 
+// ===== PENDENTES =====
+let pendentes = JSON.parse(localStorage.getItem('lc_pendentes') || '[]');
+let pagPendSelecionado = '';
+let pendFinalizandoId = null;
+
+function salvarPendentes() { localStorage.setItem('lc_pendentes', JSON.stringify(pendentes)); }
+
+function adicionarPendente() {
+  if (carrinho.length === 0) { showToast('⚠️ Carrinho vazio!'); return; }
+  const cliente = document.getElementById('nomeCliente').value || 'Cliente';
+  const total = carrinho.reduce((s, i) => s + i.preco * i.qtd, 0);
+  const pedido = {
+    id: Date.now(),
+    cliente,
+    itens: [...carrinho],
+    total,
+    hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'}),
+    data: new Date().toLocaleDateString('pt-BR'),
+  };
+  pendentes.unshift(pedido);
+  salvarPendentes();
+  carrinho = [];
+  pagamentoSelecionado = '';
+  document.getElementById('nomeCliente').value = '';
+  document.getElementById('valorRecebido').value = '';
+  document.getElementById('trocoResultado').style.display = 'none';
+  document.getElementById('trocoBox').style.display = 'none';
+  renderCarrinho();
+  atualizarBadgePend();
+  showToast('⏳ Pedido enviado para pendentes!');
+}
+
+function atualizarBadgePend() {
+  const badge = document.getElementById('badgePend');
+  if (pendentes.length > 0) {
+    badge.textContent = pendentes.length;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function renderPendentes() {
+  atualizarBadgePend();
+  const totalPend = pendentes.reduce((s, p) => s + p.total, 0);
+  document.getElementById('resumoPendTotal').textContent = 'R$ ' + totalPend.toFixed(2).replace('.', ',');
+  document.getElementById('resumoPendQtd').textContent = pendentes.length;
+  const div = document.getElementById('listaPendentes');
+  if (pendentes.length === 0) {
+    div.innerHTML = '<div class="pendentes-vazio"><span class="icon">✅</span>Nenhum pedido pendente no momento</div>';
+    return;
+  }
+  div.innerHTML = pendentes.map(p => {
+    const itensStr = p.itens.map(i => `${i.qtd}x ${i.nome} (R$ ${(i.preco*i.qtd).toFixed(2).replace('.',',')})`).join('<br>');
+    return `<div class="pendente-card">
+      <div class="pendente-header">
+        <span class="pendente-cliente">👤 ${p.cliente}</span>
+        <span class="pendente-total">R$ ${p.total.toFixed(2).replace('.',',')}</span>
+      </div>
+      <div class="pendente-hora">🕐 ${p.hora} — ${p.data}</div>
+      <div class="pendente-itens">🛒 ${itensStr}</div>
+      <div class="pendente-acoes">
+        <button class="btn-finalizar-pend" onclick="abrirModalPag(${p.id})">💰 Finalizar e Pagar</button>
+        <button class="btn-cancelar-pend" onclick="cancelarPendente(${p.id})">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function cancelarPendente(id) {
+  const p = pendentes.find(x => x.id === id);
+  if (!p) return;
+  mostrarConfirm('🗑️', `Cancelar pedido de "${p.cliente}"?`, ok => {
+    if (!ok) return;
+    pendentes = pendentes.filter(x => x.id !== id);
+    salvarPendentes();
+    renderPendentes();
+    showToast('🗑️ Pedido removido!');
+  });
+}
+
+function abrirModalPag(id) {
+  const p = pendentes.find(x => x.id === id);
+  if (!p) return;
+  pendFinalizandoId = id;
+  pagPendSelecionado = '';
+  document.getElementById('modalPagCliente').textContent = '👤 ' + p.cliente;
+  document.getElementById('modalPagTotal').textContent = 'R$ ' + p.total.toFixed(2).replace('.', ',');
+  document.getElementById('trocoPendBox').style.display = 'none';
+  document.getElementById('trocoPendResultado').style.display = 'none';
+  document.getElementById('valorRecebidoPend').value = '';
+  document.querySelectorAll('#modalPagOverlay .pag-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('modalPagOverlay').classList.add('open');
+}
+
+function fecharModalPag() {
+  document.getElementById('modalPagOverlay').classList.remove('open');
+  pendFinalizandoId = null;
+  pagPendSelecionado = '';
+}
+
+function selecionarPagPend(tipo, btn) {
+  pagPendSelecionado = tipo;
+  document.querySelectorAll('#modalPagOverlay .pag-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('trocoPendBox').style.display = tipo === 'dinheiro' ? 'block' : 'none';
+  document.getElementById('trocoPendResultado').style.display = 'none';
+  document.getElementById('valorRecebidoPend').value = '';
+}
+
+function calcularTrocoPend() {
+  const p = pendentes.find(x => x.id === pendFinalizandoId);
+  if (!p) return;
+  const recebido = parseFloat(document.getElementById('valorRecebidoPend').value) || 0;
+  const troco = recebido - p.total;
+  const el = document.getElementById('trocoPendResultado');
+  if (recebido <= 0) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  if (troco >= 0) { el.className = 'troco-resultado'; el.textContent = `✅ Troco: R$ ${troco.toFixed(2).replace('.', ',')}` ; }
+  else { el.className = 'troco-resultado negativo'; el.textContent = `❌ Falta: R$ ${Math.abs(troco).toFixed(2).replace('.', ',')}`; }
+}
+
+function confirmarPagPend() {
+  if (!pagPendSelecionado) { showToast('⚠️ Selecione a forma de pagamento!'); return; }
+  const p = pendentes.find(x => x.id === pendFinalizandoId);
+  if (!p) return;
+  const recebido = parseFloat(document.getElementById('valorRecebidoPend').value) || 0;
+  const pedido = {
+    id: Date.now(), cliente: p.cliente, itens: p.itens, total: p.total,
+    pagamento: pagPendSelecionado,
+    recebido: pagPendSelecionado === 'dinheiro' ? recebido : 0,
+    troco: pagPendSelecionado === 'dinheiro' ? recebido - p.total : 0,
+    hora: new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'}),
+    data: new Date().toLocaleDateString('pt-BR'),
+  };
+  historico.unshift(pedido);
+  salvarHistorico();
+  pendentes = pendentes.filter(x => x.id !== pendFinalizandoId);
+  salvarPendentes();
+  fecharModalPag();
+  renderPendentes();
+  showToast('🎉 Pedido finalizado e pago!');
+}
+
+
+
 // ===== CONFIRM =====
 function mostrarConfirm(icon, msg, cb) {
   confirmCallback = cb;
@@ -435,6 +676,8 @@ function mudarTab(tab, btn) {
   if (tab === 'cardapio') renderCardapio();
   if (tab === 'historico') renderHistorico();
   if (tab === 'pedido') renderProdutos();
+atualizarBadgePend();
+  if (tab === 'pendentes') renderPendentes();
 }
 
 // ===== CATEGORIAS =====
@@ -444,7 +687,8 @@ function renderCategorias() {
     `<button class="cat-btn ${c===categoriaSelecionada?'active':''}" onclick="filtrarCategoria('${c}')">${c}</button>`
   ).join('');
 }
-function filtrarCategoria(cat) { categoriaSelecionada = cat; renderCategorias(); renderProdutos(); }
+function filtrarCategoria(cat) { categoriaSelecionada = cat; renderCategorias(); renderProdutos();
+atualizarBadgePend(); }
 
 // ===== PRODUTOS =====
 function renderProdutos() {
@@ -465,7 +709,8 @@ function renderProdutos() {
         </div>`
       ).join('');
 }
-function filtrarProdutos() { renderProdutos(); }
+function filtrarProdutos() { renderProdutos();
+atualizarBadgePend(); }
 
 // ===== CARRINHO =====
 function adicionarAoCarrinho(id) {
@@ -586,6 +831,7 @@ function pedirDeletar(id) {
     if(!ok) return;
     produtos = produtos.filter(x=>x.id!==id);
     salvarProdutos(); renderCardapio(); renderProdutos();
+atualizarBadgePend();
     showToast('🗑️ Item removido!');
   });
 }
@@ -619,6 +865,7 @@ function salvarItem() {
   if(editandoId){const p=produtos.find(x=>x.id===editandoId);if(p){p.nome=nome;p.preco=preco;p.categoria=categoria;p.emoji=emoji;}}
   else{produtos.push({id:Date.now(),nome,categoria,emoji,preco});}
   salvarProdutos(); fecharModal(); renderCardapio(); renderProdutos();
+atualizarBadgePend();
   showToast(editandoId?'✅ Item atualizado!':'✅ Item adicionado!');
 }
 
@@ -661,6 +908,7 @@ function showToast(msg) {
 }
 
 renderProdutos();
+atualizarBadgePend();
 </script>
 </body>
 </html>
