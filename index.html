@@ -310,6 +310,43 @@
     border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700;
     cursor: pointer; margin-top: 10px;
   }
+
+  /* Modal adicionar itens ao pendente */
+  .modal-add-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+    z-index: 200; align-items: flex-end; justify-content: center;
+  }
+  .modal-add-overlay.open { display: flex; }
+  .modal-add {
+    background: #f0f2f5; border-radius: 20px 20px 0 0; padding: 16px;
+    width: 100%; max-width: 500px; animation: slideUp 0.3s ease;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal-add-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;
+  }
+  .modal-add-header h3 { font-size: 1rem; font-weight: 700; color: #333; }
+  .modal-add-header .cliente-label { font-size: 0.8rem; color: #e63946; font-weight: 600; }
+  .modal-add-total {
+    background: white; border-radius: 12px; padding: 10px 14px;
+    margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  }
+  .modal-add-total .label { font-size: 0.82rem; color: #555; }
+  .modal-add-total .valor { font-size: 1.1rem; font-weight: 700; color: #e63946; }
+  .modal-add-itens-lista { margin-bottom: 10px; max-height: 140px; overflow-y: auto; }
+  .modal-add-categorias {
+    display: flex; gap: 6px; overflow-x: auto; padding-bottom: 6px;
+    margin-bottom: 8px; scrollbar-width: none;
+  }
+  .modal-add-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    max-height: 220px; overflow-y: auto; margin-bottom: 12px;
+  }
+  .btn-fechar-add {
+    width: 100%; padding: 12px; background: #555; color: white;
+    border: none; border-radius: 12px; font-size: 0.9rem; font-weight: 700; cursor: pointer;
+  }
 </style>
 </head>
 <body>
@@ -428,6 +465,26 @@
       <button class="btn-cancelar" onclick="fecharModalPag()">Cancelar</button>
       <button class="btn-salvar" onclick="confirmarPagPend()">✅ Confirmar Pagamento</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL ADICIONAR ITENS AO PENDENTE -->
+<div class="modal-add-overlay" id="modalAddOverlay">
+  <div class="modal-add">
+    <div class="modal-add-header">
+      <h3>➕ Adicionar itens</h3>
+      <span class="cliente-label" id="modalAddCliente"></span>
+    </div>
+    <div class="modal-add-total">
+      <span class="label">Total atual do pedido:</span>
+      <span class="valor" id="modalAddTotal">R$ 0,00</span>
+    </div>
+    <div style="font-size:0.78rem;font-weight:600;color:#555;margin-bottom:6px;">Itens no pedido:</div>
+    <div class="modal-add-itens-lista" id="modalAddItensList"></div>
+    <div style="font-size:0.78rem;font-weight:600;color:#555;margin-bottom:6px;">Adicionar produto:</div>
+    <div class="modal-add-categorias" id="modalAddCats"></div>
+    <div class="modal-add-grid" id="modalAddGrid"></div>
+    <button class="btn-fechar-add" onclick="fecharModalAdd()">✅ Confirmar e Fechar</button>
   </div>
 </div>
 
@@ -570,7 +627,8 @@ function renderPendentes() {
       <div class="pendente-hora">🕐 ${p.hora} — ${p.data}</div>
       <div class="pendente-itens">🛒 ${itensStr}</div>
       <div class="pendente-acoes">
-        <button class="btn-finalizar-pend" onclick="abrirModalPag(${p.id})">💰 Finalizar e Pagar</button>
+        <button class="btn-finalizar-pend" style="background:linear-gradient(135deg,#1565c0,#1976d2)" onclick="abrirModalAddItens(${p.id})">➕ Add itens</button>
+        <button class="btn-finalizar-pend" onclick="abrirModalPag(${p.id})">💰 Pagar</button>
         <button class="btn-cancelar-pend" onclick="cancelarPendente(${p.id})">🗑️</button>
       </div>
     </div>`;
@@ -651,6 +709,102 @@ function confirmarPagPend() {
   renderPendentes();
   showToast('🎉 Pedido finalizado e pago!');
 }
+
+// ===== MODAL ADD ITENS AO PENDENTE =====
+let addItensPendId = null;
+let addItensCatSel = 'Todos';
+
+function abrirModalAddItens(id) {
+  const p = pendentes.find(x => x.id === id);
+  if (!p) return;
+  addItensPendId = id;
+  addItensCatSel = 'Todos';
+  document.getElementById('modalAddCliente').textContent = '👤 ' + p.cliente;
+  document.getElementById('modalAddOverlay').classList.add('open');
+  renderModalAddItens();
+}
+
+function fecharModalAdd() {
+  document.getElementById('modalAddOverlay').classList.remove('open');
+  addItensPendId = null;
+  renderPendentes();
+}
+
+function renderModalAddItens() {
+  const p = pendentes.find(x => x.id === addItensPendId);
+  if (!p) return;
+
+  // Total atualizado
+  document.getElementById('modalAddTotal').textContent = 'R$ ' + p.total.toFixed(2).replace('.', ',');
+
+  // Lista de itens atuais com controle de qty
+  const listaDiv = document.getElementById('modalAddItensList');
+  if (p.itens.length === 0) {
+    listaDiv.innerHTML = '<div style="color:#aaa;font-size:0.78rem;padding:8px;">Nenhum item ainda</div>';
+  } else {
+    listaDiv.innerHTML = p.itens.map(item =>
+      `<div class="item-carrinho">
+        <div class="nome-item">${item.nome}</div>
+        <div class="controles">
+          <button class="btn-qty" onclick="alterarQtdPend(${item.id}, -1)">−</button>
+          <span class="qty-num">${item.qtd}</span>
+          <button class="btn-qty" onclick="alterarQtdPend(${item.id}, 1)">+</button>
+        </div>
+        <div class="item-subtotal">R$ ${(item.preco * item.qtd).toFixed(2).replace('.', ',')}</div>
+      </div>`
+    ).join('');
+  }
+
+  // Categorias
+  const cats = ['Todos', ...new Set(produtos.map(x => x.categoria))];
+  document.getElementById('modalAddCats').innerHTML = cats.map(c =>
+    `<button class="cat-btn ${c === addItensCatSel ? 'active' : ''}" onclick="filtrarCatAdd('${c}')">${c}</button>`
+  ).join('');
+
+  // Grid de produtos
+  const lista = produtos.filter(x =>
+    addItensCatSel === 'Todos' || x.categoria === addItensCatSel
+  );
+  document.getElementById('modalAddGrid').innerHTML = lista.map(x =>
+    `<div class="produto-card" onclick="addItemAoPendente(${x.id})">
+      <div class="emoji">${x.emoji || '📦'}</div>
+      <div class="nome">${x.nome}</div>
+      <div class="preco">R$ ${x.preco.toFixed(2).replace('.', ',')}</div>
+    </div>`
+  ).join('');
+}
+
+function filtrarCatAdd(cat) {
+  addItensCatSel = cat;
+  renderModalAddItens();
+}
+
+function addItemAoPendente(prodId) {
+  const p = pendentes.find(x => x.id === addItensPendId);
+  const prod = produtos.find(x => x.id === prodId);
+  if (!p || !prod) return;
+  const existente = p.itens.find(i => i.id === prodId);
+  if (existente) { existente.qtd++; }
+  else { p.itens.push({ id: prod.id, nome: prod.nome, preco: prod.preco, qtd: 1 }); }
+  p.total = p.itens.reduce((s, i) => s + i.preco * i.qtd, 0);
+  salvarPendentes();
+  renderModalAddItens();
+  showToast(`${prod.emoji || '✅'} ${prod.nome} adicionado!`);
+}
+
+function alterarQtdPend(itemId, delta) {
+  const p = pendentes.find(x => x.id === addItensPendId);
+  if (!p) return;
+  const item = p.itens.find(i => i.id === itemId);
+  if (!item) return;
+  item.qtd += delta;
+  if (item.qtd <= 0) p.itens = p.itens.filter(i => i.id !== itemId);
+  p.total = p.itens.reduce((s, i) => s + i.preco * i.qtd, 0);
+  salvarPendentes();
+  renderModalAddItens();
+}
+
+
 
 
 
