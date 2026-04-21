@@ -49,6 +49,13 @@
     border-radius: 10px; font-size: 0.9rem; outline: none;
   }
   .cliente-row input:focus { border-color: #e63946; }
+  
+  /* Botão de voz personalizado */
+  .btn-voz {
+    background: #e63946; color: white; border: none; border-radius: 10px; 
+    padding: 8px 12px; cursor: pointer; font-size: 1.2rem; transition: transform 0.2s;
+  }
+  .btn-voz:active { transform: scale(0.9); }
 
   .search-bar { position: relative; margin-bottom: 10px; }
   .search-bar input {
@@ -366,6 +373,7 @@
 <div id="tab-pedido" class="tab-content active">
   <div class="cliente-row">
     <input type="text" id="nomeCliente" placeholder="👤 Nome / obs. do cliente" />
+    <button class="btn-voz" id="btnVoz" onclick="iniciarComandoVoz()">🎙️</button>
   </div>
   <div class="search-bar">
     <span class="icon">🔍</span>
@@ -444,7 +452,6 @@
   </div>
 </div>
 
-<!-- MODAL PAGAMENTO PENDENTE -->
 <div class="modal-pag-overlay" id="modalPagOverlay">
   <div class="modal-pag">
     <h3>💰 Finalizar pedido</h3>
@@ -468,7 +475,6 @@
   </div>
 </div>
 
-<!-- MODAL ADICIONAR ITENS AO PENDENTE -->
 <div class="modal-add-overlay" id="modalAddOverlay">
   <div class="modal-add">
     <div class="modal-add-header">
@@ -564,6 +570,74 @@ let confirmCallback = null;
 
 function salvarProdutos() { localStorage.setItem('lc_produtos', JSON.stringify(produtos)); }
 function salvarHistorico() { localStorage.setItem('lc_historico', JSON.stringify(historico)); }
+
+// ===== COMANDO DE VOZ (NOVO) =====
+const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = Recognition ? new Recognition() : null;
+
+if (recognition) {
+  recognition.lang = 'pt-BR';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    document.getElementById('btnVoz').textContent = '🛑';
+    showToast('Ouvindo... (Ex: "uma coxinha e uma coca")');
+  };
+
+  recognition.onend = () => {
+    document.getElementById('btnVoz').textContent = '🎙️';
+  };
+
+  recognition.onresult = (event) => {
+    const transcricao = event.results[0][0].transcript.toLowerCase();
+    processarPedidoVoz(transcricao);
+  };
+
+  recognition.onerror = () => {
+    showToast('⚠️ Erro no reconhecimento de voz.');
+    document.getElementById('btnVoz').textContent = '🎙️';
+  };
+}
+
+function iniciarComandoVoz() {
+  if (!recognition) {
+    alert('Seu navegador não suporta reconhecimento de voz.');
+    return;
+  }
+  try { recognition.start(); } catch(e) {}
+}
+
+function processarPedidoVoz(texto) {
+  // Quebra a frase por conectores
+  const partes = texto.split(/ e | mais | \+ /);
+  let encontrados = 0;
+
+  partes.forEach(parte => {
+    // Remove termos comuns para facilitar a busca
+    const termoLimpo = parte.trim()
+      .replace(/um |uma |uns |umas |de |do |da |quero |adiciona /g, "")
+      .toLowerCase();
+    
+    // Busca aproximada no cardápio
+    const prod = produtos.find(p => 
+      termoLimpo.includes(p.nome.toLowerCase()) || 
+      p.nome.toLowerCase().includes(termoLimpo)
+    );
+
+    if (prod) {
+      adicionarAoCarrinho(prod.id);
+      encontrados++;
+    } else {
+      showToast(`❓ Não entendi: "${termoLimpo}"`);
+    }
+  });
+
+  if (encontrados > 0) {
+    showToast(`✅ ${encontrados} item(ns) adicionados por voz!`);
+  }
+}
+
 
 // ===== PENDENTES =====
 let pendentes = JSON.parse(localStorage.getItem('lc_pendentes') || '[]');
