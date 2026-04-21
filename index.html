@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#e63946">
-<title>Lanches Cardoso - PDV v4.7 Pro</title>
+<title>Lanches Cardoso - PDV v4.8 Expert</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #222; padding-bottom: 120px; }
@@ -22,7 +22,7 @@
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46,125,50,0.7); } 70% { box-shadow: 0 0 0 15px rgba(46,125,50,0); } 100% { box-shadow: 0 0 0 0 rgba(46,125,50,0); } }
 
   .produtos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-  .produto-card { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; }
+  .produto-card { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; border: 1px solid #eee; }
   .p-linha { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #ccc; }
 </style>
 </head>
@@ -61,21 +61,20 @@
 <div class="legenda-container" id="legenda">🎙️ Microfone desligado</div>
 
 <script>
-// --- BANCO DE DADOS INTELIGENTE ---
-const chaves = ['lanches_cardoso_produtos', 'lc_prods', 'produtos_v3'];
-let itensSalvos = null;
-chaves.forEach(c => { if(localStorage.getItem(c)) itensSalvos = JSON.parse(localStorage.getItem(c)); });
+// --- BANCO DE DADOS ---
+let produtos = JSON.parse(localStorage.getItem('lanches_cardoso_produtos')) || 
+               JSON.parse(localStorage.getItem('lc_prods')) || 
+               [{ id: 1, nome: 'Café Puro', preco: 4.0 }, { id: 2, nome: 'Café com Leite', preco: 6.0 }];
 
-let produtos = itensSalvos || [{ id: 1, nome: 'Coxinha', preco: 7.0 }, { id: 2, nome: 'Café', preco: 4.0 }];
 let carrinho = [];
 let pendentes = JSON.parse(localStorage.getItem('lc_pend')) || [];
+let perguntandoLimpar = false;
 
-// --- VOZ DE ALTA PERFORMANCE ---
+// --- VOZ ---
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new Recognition();
 recognition.lang = 'pt-BR';
 recognition.continuous = true;
-recognition.interimResults = false;
 
 function legenda(txt, cor = "#00ff00") { 
     const el = document.getElementById('legenda');
@@ -95,55 +94,61 @@ recognition.onresult = (event) => {
     let fala = event.results[event.results.length - 1][0].transcript.toLowerCase();
     legenda("Você disse: " + fala);
 
-    // COMANDO LIMPAR - FECHA O MICROFONE
-    if (fala.includes("limpar pedido")) {
+    // COMANDO LIMPAR
+    if (fala.includes("limpar") || fala.includes("limpe") || (perguntandoLimpar && fala.includes("sim"))) {
         carrinho = []; renderCarrinho();
-        falar("Pedido limpo. Desligando microfone.");
-        setTimeout(() => { alternarEscuta(false); }, 1500);
+        perguntandoLimpar = false;
+        falar("Pedido limpo com sucesso.");
+        setTimeout(() => alternarEscuta(false), 1000);
         return;
     }
 
+    if (perguntandoLimpar && fala.includes("não")) {
+        perguntandoLimpar = false;
+        falar("Entendido, mantendo o pedido.");
+        return;
+    }
+
+    // COMANDO TOTAL
     if (fala.includes("total")) {
         const t = carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0);
-        falar(`O total é ${t.toFixed(2)} reais.`);
+        perguntandoLimpar = true;
+        falar(`O total é ${t.toFixed(2)} reais. Deseja limpar o pedido todo?`);
         return;
     }
 
-    // PROCESSAMENTO DE ITENS E QUANTIDADES (2x, duas vezes, 3 coxinhas)
+    // PROCESSAR ITENS
     let partes = fala.split(/ e | mais | \+ /);
-    let algoAdicionado = false;
-
+    
     partes.forEach(parte => {
         let qtd = 1;
-        // Captura números: "2x", "2 café", "duas coxinhas"
         const numMatch = parte.match(/\d+/);
-        if (numMatch) {
-            qtd = parseInt(numMatch[0]);
+        if (numMatch) qtd = parseInt(numMatch[0]);
+
+        let busca = parte.replace(/\d+|x |vezes |vez |quero |me dá |adicione /g, "").trim();
+        if (busca.length < 3) return;
+
+        // Filtra opções que contenham a palavra dita
+        let opcoes = produtos.filter(p => p.nome.toLowerCase().includes(busca));
+
+        if (opcoes.length === 1) {
+            // Se só tem um, adiciona direto
+            adicionarAoCarrinho(opcoes[0].id, qtd);
+            falar(`Adicionado ${qtd} ${opcoes[0].nome}.`);
+        } else if (opcoes.length > 1) {
+            // Se tem mais de um (ex: Café Puro e Café com Leite), ela pergunta qual
+            let nomes = opcoes.map(o => o.nome).join(" ou ");
+            falar(`Você quer ${nomes}? Por favor, fale o nome completo.`);
         } else {
-            const d = {"um":1,"uma":1,"dois":2,"duas":2,"três":3,"quatro":4,"cinco":5};
-            for(let k in d) if(parte.includes(k)) qtd = d[k];
-        }
-
-        // Limpa a frase para buscar o nome do item
-        const busca = parte.replace(/\d+|x |vezes |vez |um |uma |dois |duas |quero |me dá /g, "").trim();
-        // Busca pelo primeiro nome ou parte do nome
-        const p = produtos.find(item => busca.length >= 2 && item.nome.toLowerCase().split(' ')[0].includes(busca.split(' ')[0]));
-
-        if (p) {
-            adicionarAoCarrinho(p.id, qtd);
-            algoAdicionado = true;
+            // Se não tem nada a ver com o cardápio, ela ignora em silêncio 
+            // a menos que pareça uma tentativa de pedido
+            if(fala.includes("adicione") || fala.includes("quero")) {
+                falar("Esse item não está no cardápio.");
+            }
         }
     });
-
-    if (algoAdicionado) {
-        const total = carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0);
-        falar(`Adicionado. Total ${total.toFixed(2)}`);
-    } else if (fala.length > 4) {
-        falar("Não encontrei esse item no cardápio.");
-    }
 };
 
-// Reinício automático se o navegador tentar fechar o mic sozinho (exceto se manual)
 recognition.onend = () => {
     const btn = document.getElementById('btnVoz');
     if (btn.classList.contains('ouvindo')) recognition.start();
@@ -152,11 +157,10 @@ recognition.onend = () => {
 function alternarEscuta(forcar) {
     const btn = document.getElementById('btnVoz');
     const ligar = forcar !== undefined ? forcar : !btn.classList.contains('ouvindo');
-
     if (ligar) {
         try { recognition.start(); } catch(e){}
         btn.classList.add('ouvindo');
-        legenda("🎙️ Ouvindo tudo...");
+        legenda("🎙️ Ouvindo...");
     } else {
         recognition.stop();
         btn.classList.remove('ouvindo');
@@ -164,7 +168,7 @@ function alternarEscuta(forcar) {
     }
 }
 
-// --- FUNÇÕES CORE ---
+// --- LOGICA PDV ---
 function adicionarAoCarrinho(id, qtd = 1) {
     const p = produtos.find(x => x.id === id);
     const ex = carrinho.find(i => i.id === id);
@@ -177,7 +181,7 @@ function renderCarrinho() {
     const box = document.getElementById('totalBox');
     if (!carrinho.length) { lista.innerHTML = ''; box.style.display = 'none'; return; }
     lista.innerHTML = carrinho.map(i => `
-        <div style="background:#fff; padding:10px; margin-bottom:5px; border-radius:10px; display:flex; justify-content:space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.1)">
+        <div style="background:#fff; padding:10px; margin-bottom:5px; border-radius:10px; display:flex; justify-content:space-between">
             <span>${i.qtd}x <strong>${i.nome}</strong></span>
             <strong>R$ ${(i.preco * i.qtd).toFixed(2)}</strong>
         </div>
@@ -190,7 +194,7 @@ function renderCarrinho() {
 function renderProdutos() {
     document.getElementById('produtosGrid').innerHTML = produtos.map(p => `
         <div class="produto-card" onclick="adicionarAoCarrinho(${p.id})">
-            <div style="font-size:0.9rem">${p.nome}</div>
+            <div>${p.nome}</div>
             <div style="color:#e63946">R$ ${p.preco.toFixed(2)}</div>
         </div>
     `).join('');
@@ -202,7 +206,7 @@ function salvarPendente() {
     carrinho = []; document.getElementById('nomeCliente').value = "";
     localStorage.setItem('lc_pend', JSON.stringify(pendentes));
     renderCarrinho(); renderPendentes();
-    falar("Pedido de " + cliente + " salvo!");
+    falar("Salvo.");
 }
 
 function renderPendentes() {
