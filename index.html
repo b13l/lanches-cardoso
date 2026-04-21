@@ -4,68 +4,74 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#e63946">
-<title>Lanches Cardoso - PDV v4.1</title>
+<title>Lanches Cardoso - PDV v3 Voice Pro</title>
 <style>
+  /* ESTILOS ORIGINAIS V3 */
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #222; }
-
-  header { background: linear-gradient(135deg, #e63946, #c1121f); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-  
+  header { background: linear-gradient(135deg, #e63946, #c1121f); color: white; padding: 15px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
   .tabs { display: flex; background: #fff; border-bottom: 2px solid #e63946; position: sticky; top: 55px; z-index: 99; }
   .tab-btn { flex: 1; padding: 12px 5px; border: none; background: none; font-size: 0.75rem; font-weight: 700; color: #888; cursor: pointer; text-transform: uppercase; }
   .tab-btn.active { color: #e63946; border-bottom: 3px solid #e63946; }
-
   .tab-content { display: none; padding: 12px; }
   .tab-content.active { display: block; }
 
+  /* COMPONENTES DE VOZ E BUSCA */
   .cliente-row { display: flex; gap: 8px; margin-bottom: 12px; }
   .cliente-row input { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 12px; font-size: 1rem; outline: none; }
-  
-  .btn-voz { background: #e63946; color: white; border: none; border-radius: 12px; width: 50px; cursor: pointer; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; }
+  .btn-voz { background: #e63946; color: white; border: none; border-radius: 12px; width: 52px; cursor: pointer; font-size: 1.4rem; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
   .btn-voz.ouvindo { background: #2e7d32; animation: pulse 1.5s infinite; }
-  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(46,125,50,0.5); } 100% { transform: scale(1); } }
+  @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); box-shadow: 0 0 15px rgba(46,125,50,0.4); } 100% { transform: scale(1); } }
 
+  /* CARDÁPIO E CATEGORIAS */
+  .categorias { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 5px; scrollbar-width: none; }
+  .cat-btn { white-space: nowrap; padding: 8px 16px; border-radius: 20px; border: 2px solid #e63946; background: white; color: #e63946; font-size: 0.8rem; font-weight: 700; }
+  .cat-btn.active { background: #e63946; color: white; }
   .produtos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
-  .produto-card { background: white; border-radius: 15px; padding: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: pointer; }
+  .produto-card { background: white; border-radius: 15px; padding: 12px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border: 2px solid transparent; }
+  .produto-card:active { border-color: #e63946; background: #fff5f5; }
 
-  /* ESTILO DOS PENDENTES - IGUAL AO V3 */
-  .card-pendente { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); border-left: 5px solid #e63946; }
-  .pendente-header { display: flex; justify-content: space-between; font-weight: 800; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px; font-size: 1rem; }
-  .pendente-itens { font-size: 0.9rem; color: #444; margin-bottom: 12px; }
-  .pendente-item-linha { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #eee; }
+  /* PENDENTES V3 STYLE */
+  .card-pendente { background: white; border-radius: 15px; padding: 15px; margin-bottom: 15px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); border-left: 6px solid #e63946; }
+  .pendente-header { display: flex; justify-content: space-between; font-weight: 800; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px; font-size: 1.1rem; }
+  .pendente-itens { font-size: 0.95rem; color: #333; margin-bottom: 12px; }
+  .pendente-item-linha { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #f0f0f0; }
   .btn-grupo { display: flex; gap: 8px; }
-  .btn-pend { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: 700; font-size: 0.8rem; cursor: pointer; }
+  .btn-pend { flex: 1; padding: 12px; border-radius: 10px; border: none; font-weight: 700; font-size: 0.85rem; cursor: pointer; }
 
-  .total-box { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); margin-top: 15px; }
+  /* CARRINHO E TOTAIS */
+  .total-box { background: white; padding: 15px; border-radius: 15px; box-shadow: 0 -2px 15px rgba(0,0,0,0.1); margin-top: 15px; }
   .btn-acao { width: 100%; padding: 15px; border-radius: 12px; border: none; color: white; font-weight: 700; margin-top: 8px; font-size: 1rem; }
-  .toast { position: fixed; bottom: 70px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 10px 20px; border-radius: 25px; font-size: 0.8rem; z-index: 1000; display: none; }
+  .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%); background: #333; color: white; padding: 12px 24px; border-radius: 30px; font-size: 0.85rem; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
 </style>
 </head>
 <body>
 
 <header>
   <h1>🍔 Lanches Cardoso</h1>
-  <p>Diga "Fechar Pedido" para começar</p>
+  <p>Toque no 🎙️ e diga "Fechar Pedido"</p>
 </header>
 
 <div class="tabs">
-  <button class="tab-btn active" onclick="mudarTab('pedido', this)">🛒 Novo</button>
+  <button class="tab-btn active" onclick="mudarTab('pedido', this)">🛒 Venda</button>
   <button class="tab-btn" onclick="mudarTab('pendentes', this)">⏳ Pendentes <span id="badgePend" style="background:#e63946; color:white; border-radius:50%; padding: 2px 6px; font-size:0.6rem; display:none">0</span></button>
   <button class="tab-btn" onclick="mudarTab('cardapio', this)">📋 Cardápio</button>
+  <button class="tab-btn" onclick="mudarTab('historico', this)">📊 Vendas</button>
 </div>
 
 <div id="tab-pedido" class="tab-content active">
   <div class="cliente-row">
-    <input type="text" id="nomeCliente" placeholder="Nome do Cliente..." />
+    <input type="text" id="nomeCliente" placeholder="👤 Nome do cliente..." />
     <button class="btn-voz" id="btnVoz" onclick="alternarEscuta()">🎙️</button>
   </div>
   
+  <div class="categorias" id="categoriasGrid"></div>
   <div class="produtos-grid" id="produtosGrid"></div>
 
   <div id="areaCarrinho">
     <div id="listaCarrinho"></div>
     <div class="total-box" id="totalBox" style="display:none">
-        <div style="display:flex; justify-content:space-between; font-size:1.2rem; font-weight:800; margin-bottom:10px">
+        <div style="display:flex; justify-content:space-between; font-size:1.3rem; font-weight:800; margin-bottom:10px">
             <span>TOTAL:</span>
             <span id="txtTotal">R$ 0,00</span>
         </div>
@@ -78,76 +84,101 @@
   <div id="listaPendentes"></div>
 </div>
 
+<div id="tab-cardapio" class="tab-content">
+    <div id="listaGerenciar"></div>
+</div>
+
+<div id="tab-historico" class="tab-content">
+    <div id="listaHistorico"></div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
+// --- BANCO DE DADOS ---
 let produtos = JSON.parse(localStorage.getItem('lc_prods')) || [
-  { id: 1, nome: 'Coxinha', preco: 7.0, emoji: '🥟' },
-  { id: 2, nome: 'Misto com Ovo', preco: 10.0, emoji: '🥪' },
-  { id: 3, nome: 'Café Puro', preco: 4.0, emoji: '☕' },
-  { id: 4, nome: 'Pão na Chapa', preco: 5.0, emoji: '🥖' },
-  { id: 5, nome: 'Bolo', preco: 6.0, emoji: '🍰' }
+  { id: 1, nome: 'Coxinha', preco: 7.0, cat: 'Salgados', emoji: '🥟' },
+  { id: 2, nome: 'Misto com Ovo', preco: 10.0, cat: 'Salgados', emoji: '🥪' },
+  { id: 3, nome: 'Café Puro', preco: 4.0, cat: 'Bebidas', emoji: '☕' },
+  { id: 4, nome: 'Pão na Chapa', preco: 5.0, cat: 'Salgados', emoji: '🥖' },
+  { id: 5, nome: 'Bolo', preco: 6.0, cat: 'Doces', emoji: '🍰' },
+  { id: 6, nome: 'Suco Natural', preco: 8.0, cat: 'Bebidas', emoji: '🍹' }
 ];
 let carrinho = [];
 let pendentes = JSON.parse(localStorage.getItem('lc_pend')) || [];
-let assistenteOuvindoItens = false;
+let historico = JSON.parse(localStorage.getItem('lc_hist')) || [];
+let catAtiva = 'Todos';
+let assistenteAtiva = false;
 
-// --- VOZ ---
+// --- CONFIGURAÇÃO DE VOZ (RESILIENTE) ---
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new Recognition();
 recognition.lang = 'pt-BR';
 recognition.continuous = true;
+recognition.interimResults = false;
 
-function falar(texto) {
+function falar(texto, callback) {
     window.speechSynthesis.cancel();
     const msg = new SpeechSynthesisUtterance(texto);
     msg.lang = 'pt-BR';
+    msg.onend = () => { if(callback) callback(); };
     window.speechSynthesis.speak(msg);
 }
 
 recognition.onresult = (event) => {
     const fala = event.results[event.results.length - 1][0].transcript.toLowerCase();
-    
+    console.log("Processando:", fala);
+
     if (fala.includes("fechar pedido")) {
-        falar("Ok, pode falar o seu pedido");
-        assistenteOuvindoItens = true;
-        showToast("🎙️ Pode falar os itens...");
+        falar("Ok, pode falar o seu pedido", () => {
+            // Garante que o reconhecimento continue focado após a fala
+            console.log("IA Pronta para ouvir itens...");
+            assistenteAtiva = true;
+        });
+        showToast("🎙️ Ouvindo itens...");
         return;
     }
 
-    if (assistenteOuvindoItens) {
-        processarItens(fala);
+    if (assistenteAtiva) {
+        processarComandoIA(fala);
     }
 };
 
-function processarItens(texto) {
+// Se o reconhecimento cair por silêncio mas o botão estiver ativo, ele volta sozinho
+recognition.onend = () => {
+    const btn = document.getElementById('btnVoz');
+    if (btn.classList.contains('ouvindo')) {
+        recognition.start();
+    }
+};
+
+function processarComandoIA(texto) {
     const partes = texto.split(/ e | mais | \+ /);
-    let algoAchado = false;
+    let achou = false;
 
     partes.forEach(parte => {
         let trecho = parte.trim();
         let qtd = 1;
+        const matchNum = trecho.match(/\d+/);
         
-        const numeros = trecho.match(/\d+/);
-        if (numeros) qtd = parseInt(numeros[0]);
+        if (matchNum) qtd = parseInt(matchNum[0]);
         else {
-            const dicio = {"um":1,"uma":1,"dois":2,"duas":2,"três":3,"quatro":4,"cinco":5};
-            for(let k in dicio) if(trecho.startsWith(k)) qtd = dicio[k];
+            const d = {"um":1,"uma":1,"dois":2,"duas":2,"três":3,"quatro":4,"cinco":5,"dez":10};
+            for(let k in d) if(trecho.startsWith(k)) qtd = d[k];
         }
 
-        const nomeLimpo = trecho.replace(/\d+|um |uma |dois |duas |cinco |quero |me dá /g, "").trim();
-        const prod = produtos.find(p => nomeLimpo.length >= 3 && p.nome.toLowerCase().includes(nomeLimpo));
+        const busca = trecho.replace(/\d+|um |uma |dois |duas |cinco |dez |quero |me dá /g, "").trim();
+        const p = produtos.find(item => busca.length >= 3 && item.nome.toLowerCase().includes(busca));
 
-        if (prod) {
-            adicionarAoCarrinho(prod.id, qtd);
-            algoAchado = true;
+        if (p) {
+            adicionarAoCarrinho(p.id, qtd);
+            achou = true;
         }
     });
 
-    if (algoAchado) {
+    if (achou) {
         const total = carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0);
-        falar(`Adicionado. Total ${total} reais.`);
-        // Note: assistenteOuvindoItens continua TRUE para você continuar falando
+        falar("Adicionado. Total " + total + " reais");
     }
 }
 
@@ -156,15 +187,39 @@ function alternarEscuta() {
     if (btn.classList.contains('ouvindo')) {
         recognition.stop();
         btn.classList.remove('ouvindo');
-        assistenteOuvindoItens = false;
+        assistenteAtiva = false;
+        showToast("Voz desligada");
     } else {
         recognition.start();
         btn.classList.add('ouvindo');
-        falar("Ativo. Diga fechar pedido.");
+        falar("Sistema de voz ativo. Diga fechar pedido");
+        showToast("🎙️ Diga 'Fechar Pedido'");
     }
 }
 
-// --- LOGICA PDV ---
+// --- FUNÇÕES PDV ---
+function renderProdutos() {
+    const grid = document.getElementById('produtosGrid');
+    const filtrados = produtos.filter(p => catAtiva === 'Todos' || p.cat === catAtiva);
+    grid.innerHTML = filtrados.map(p => `
+        <div class="produto-card" onclick="adicionarAoCarrinho(${p.id})">
+            <div style="font-size:1.6rem; margin-bottom:5px">${p.emoji}</div>
+            <div style="font-size:0.8rem; font-weight:600">${p.nome}</div>
+            <div style="color:#e63946; font-weight:700">R$ ${p.preco.toFixed(2)}</div>
+        </div>
+    `).join('');
+    renderCategorias();
+}
+
+function renderCategorias() {
+    const cats = ['Todos', ...new Set(produtos.map(p => p.cat))];
+    document.getElementById('categoriasGrid').innerHTML = cats.map(c => `
+        <button class="cat-btn ${c === catAtiva ? 'active' : ''}" onclick="setCat('${c}')">${c}</button>
+    `).join('');
+}
+
+function setCat(c) { catAtiva = c; renderProdutos(); }
+
 function adicionarAoCarrinho(id, qtd = 1) {
     const p = produtos.find(x => x.id === id);
     const ex = carrinho.find(i => i.id === id);
@@ -175,36 +230,55 @@ function adicionarAoCarrinho(id, qtd = 1) {
 function renderCarrinho() {
     const lista = document.getElementById('listaCarrinho');
     const box = document.getElementById('totalBox');
-    if (carrinho.length === 0) { lista.innerHTML = ''; box.style.display = 'none'; return; }
+    if (!carrinho.length) { lista.innerHTML = ''; box.style.display = 'none'; return; }
+    
     lista.innerHTML = carrinho.map(i => `
-        <div style="background:#fff; padding:10px; margin-bottom:5px; border-radius:10px; display:flex; justify-content:space-between">
-            <span>${i.qtd}x ${i.nome}</span>
-            <strong>R$ ${(i.preco * i.qtd).toFixed(2)}</strong>
+        <div style="background:#fff; padding:12px; margin-bottom:8px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 4px rgba(0,0,0,0.05)">
+            <span><strong>${i.qtd}x</strong> ${i.nome}</span>
+            <div style="display:flex; align-items:center; gap:10px">
+                <button onclick="alterarQtd(${i.id}, -1)" style="width:28px; height:28px; border-radius:50%; border:none; background:#eee">-</button>
+                <strong>R$ ${(i.preco * i.qtd).toFixed(2)}</strong>
+                <button onclick="alterarQtd(${i.id}, 1)" style="width:28px; height:28px; border-radius:50%; border:none; background:#eee">+</button>
+            </div>
         </div>
     `).join('');
+    
     const total = carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0);
     document.getElementById('txtTotal').textContent = `R$ ${total.toFixed(2)}`;
     box.style.display = 'block';
 }
 
+function alterarQtd(id, n) {
+    const i = carrinho.find(x => x.id === id);
+    if (i) { i.qtd += n; if (i.qtd <= 0) carrinho = carrinho.filter(x => x.id !== id); }
+    renderCarrinho();
+}
+
+// --- PENDENTES (V3 STYLE COMPLETO) ---
 function salvarPendente() {
     const cliente = document.getElementById('nomeCliente').value || "Cliente";
-    pendentes.push({ id: Date.now(), cliente, itens: [...carrinho], total: carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0) });
+    pendentes.push({
+        id: Date.now(),
+        cliente,
+        itens: [...carrinho],
+        total: carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0),
+        hora: new Date().toLocaleTimeString().slice(0,5)
+    });
     carrinho = [];
     document.getElementById('nomeCliente').value = "";
     localStorage.setItem('lc_pend', JSON.stringify(pendentes));
-    renderCarrinho(); renderPendentes(); atualizarBadge();
+    renderCarrinho(); atualizarBadge(); showToast("Salvo em Pendentes!");
 }
 
 function renderPendentes() {
     const div = document.getElementById('listaPendentes');
-    if (!pendentes.length) { div.innerHTML = '<p style="text-align:center; padding:20px">Vazio</p>'; return; }
+    if (!pendentes.length) { div.innerHTML = '<p style="text-align:center; padding:30px; color:#888">Nenhum pedido pendente.</p>'; return; }
     
     div.innerHTML = pendentes.map(p => `
         <div class="card-pendente">
             <div class="pendente-header">
                 <span>👤 ${p.cliente}</span>
-                <span>R$ ${p.total.toFixed(2)}</span>
+                <span style="color:#e63946">R$ ${p.total.toFixed(2)}</span>
             </div>
             <div class="pendente-itens">
                 ${p.itens.map(i => `
@@ -215,8 +289,9 @@ function renderPendentes() {
                 `).join('')}
             </div>
             <div class="btn-grupo">
-                <button class="btn-pend" style="background:#eee" onclick="reabrirPedido(${p.id})">➕ Itens</button>
-                <button class="btn-pend" style="background:#2e7d32; color:white" onclick="apagarPend(${p.id})">Pagar</button>
+                <button class="btn-pend" style="background:#f0f0f0" onclick="reabrirPedido(${p.id})">➕ Adicionar Itens</button>
+                <button class="btn-pend" style="background:#2e7d32; color:white" onclick="pagarPedido(${p.id})">Pagar</button>
+                <button class="btn-pend" style="background:#fff0f0; color:red" onclick="excluirPend(${p.id})">🗑️</button>
             </div>
         </div>
     `).join('');
@@ -229,29 +304,41 @@ function reabrirPedido(id) {
     pendentes = pendentes.filter(x => x.id !== id);
     localStorage.setItem('lc_pend', JSON.stringify(pendentes));
     mudarTab('pedido', document.querySelector('.tab-btn'));
-    renderCarrinho(); renderPendentes(); atualizarBadge();
+    renderCarrinho(); atualizarBadge();
 }
 
-function apagarPend(id) {
+function pagarPedido(id) {
+    const p = pendentes.find(x => x.id === id);
+    historico.push({...p, data: new Date().toLocaleDateString()});
     pendentes = pendentes.filter(x => x.id !== id);
     localStorage.setItem('lc_pend', JSON.stringify(pendentes));
-    renderPendentes(); atualizarBadge();
+    localStorage.setItem('lc_hist', JSON.stringify(historico));
+    renderPendentes(); atualizarBadge(); showToast("Venda Finalizada!");
 }
 
+function excluirPend(id) {
+    if(confirm("Excluir este pedido?")) {
+        pendentes = pendentes.filter(x => x.id !== id);
+        localStorage.setItem('lc_pend', JSON.stringify(pendentes));
+        renderPendentes(); atualizarBadge();
+    }
+}
+
+// --- UTILITÁRIOS ---
 function mudarTab(t, btn) {
     document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('tab-' + t).classList.add('active');
     btn.classList.add('active');
     if(t === 'pendentes') renderPendentes();
+    if(t === 'cardapio') renderCardapio();
 }
 
-function renderProdutos() {
-    document.getElementById('produtosGrid').innerHTML = produtos.map(p => `
-        <div class="produto-card" onclick="adicionarAoCarrinho(${p.id})">
-            <div>${p.emoji}</div>
-            <div style="font-size:0.8rem">${p.nome}</div>
-            <div style="color:#e63946; font-weight:700">R$ ${p.preco.toFixed(2)}</div>
+function renderCardapio() {
+    document.getElementById('listaGerenciar').innerHTML = produtos.map(p => `
+        <div style="background:#white; padding:10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between">
+            <span>${p.nome}</span>
+            <strong>R$ ${p.preco.toFixed(2)}</strong>
         </div>
     `).join('');
 }
