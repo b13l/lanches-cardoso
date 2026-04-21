@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#e63946">
-<title>Lanches Cardoso - PDV v4.8 Expert</title>
+<title>Lanches Cardoso - PDV v4.9 Expert</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #222; padding-bottom: 120px; }
@@ -14,15 +14,12 @@
   .tab-btn.active { color: #e63946; border-bottom: 3px solid #e63946; }
   .tab-content { display: none; padding: 12px; }
   .tab-content.active { display: block; }
-
   .legenda-container { position: fixed; bottom: 0; left: 0; right: 0; background: #111; color: #00ff00; padding: 15px; text-align: center; font-family: monospace; font-size: 0.9rem; z-index: 1000; border-top: 3px solid #e63946; min-height: 60px; }
-
   .btn-voz { background: #e63946; color: white; border: none; border-radius: 15px; width: 60px; height: 50px; cursor: pointer; font-size: 1.6rem; display: flex; align-items: center; justify-content: center; }
   .btn-voz.ouvindo { background: #2e7d32; animation: pulse 1s infinite; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46,125,50,0.7); } 70% { box-shadow: 0 0 0 15px rgba(46,125,50,0); } 100% { box-shadow: 0 0 0 0 rgba(46,125,50,0); } }
-
   .produtos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-  .produto-card { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; border: 1px solid #eee; }
+  .produto-card { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; }
   .p-linha { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #ccc; }
 </style>
 </head>
@@ -48,29 +45,24 @@
         <span>TOTAL:</span>
         <span id="txtTotal">R$ 0,00</span>
     </div>
-    <button onclick="salvarPendente()" style="width:100%; padding:15px; background:#f39c12; color:white; border:none; border-radius:10px; font-weight:bold; margin-top:10px; cursor:pointer">⏳ Salvar Pedido</button>
+    <button onclick="salvarPendente()" style="width:100%; padding:15px; background:#f39c12; color:white; border:none; border-radius:10px; font-weight:bold; margin-top:10px">⏳ Salvar Pedido</button>
   </div>
 </div>
 
 <div id="tab-pendentes" class="tab-content"><div id="listaPendentes"></div></div>
 <div id="tab-cardapio" class="tab-content">
-  <button onclick="abrirAdd()" style="width:100%; padding:12px; background:#2e7d32; color:white; border:none; border-radius:10px; font-weight:bold; margin-bottom:10px">+ Novo Produto</button>
-  <div id="listaGerenciar"></div>
+    <button onclick="abrirAdd()" style="width:100%; padding:12px; background:#2e7d32; color:white; border:none; border-radius:10px; font-weight:bold; margin-bottom:10px">+ Novo Produto</button>
+    <div id="listaGerenciar"></div>
 </div>
 
-<div class="legenda-container" id="legenda">🎙️ Microfone desligado</div>
+<div class="legenda-container" id="legenda">🎙️ Clique para iniciar...</div>
 
 <script>
-// --- BANCO DE DADOS ---
-let produtos = JSON.parse(localStorage.getItem('lanches_cardoso_produtos')) || 
-               JSON.parse(localStorage.getItem('lc_prods')) || 
-               [{ id: 1, nome: 'Café Puro', preco: 4.0 }, { id: 2, nome: 'Café com Leite', preco: 6.0 }];
-
+let produtos = JSON.parse(localStorage.getItem('lanches_cardoso_produtos')) || [{ id: 1, nome: 'Café Puro', preco: 4.0 }];
 let carrinho = [];
 let pendentes = JSON.parse(localStorage.getItem('lc_pend')) || [];
-let perguntandoLimpar = false;
+let modoCadastro = { ativo: false, nome: '', qtd: 1 };
 
-// --- VOZ ---
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new Recognition();
 recognition.lang = 'pt-BR';
@@ -81,78 +73,76 @@ function legenda(txt, cor = "#00ff00") {
     el.innerText = txt; el.style.color = cor;
 }
 
-function falar(texto, callback) {
+function falar(texto) {
     window.speechSynthesis.cancel();
     legenda("IA: " + texto, "#fff");
     const msg = new SpeechSynthesisUtterance(texto);
     msg.lang = 'pt-BR';
-    msg.onend = () => { if(callback) callback(); };
     window.speechSynthesis.speak(msg);
 }
 
 recognition.onresult = (event) => {
     let fala = event.results[event.results.length - 1][0].transcript.toLowerCase();
-    legenda("Você disse: " + fala);
+    legenda("Ouvi: " + fala);
 
-    // COMANDO LIMPAR
-    if (fala.includes("limpar") || fala.includes("limpe") || (perguntandoLimpar && fala.includes("sim"))) {
+    // MODO CADASTRO DE ITEM NOVO (PEDIR VALOR)
+    if (modoCadastro.ativo) {
+        let preco = parseFloat(fala.replace(',', '.').match(/[+-]?\d+(\.\d+)?/));
+        if (!isNaN(preco)) {
+            let novo = { id: Date.now(), nome: modoCadastro.nome, preco: preco };
+            produtos.push(novo);
+            localStorage.setItem('lanches_cardoso_produtos', JSON.stringify(produtos));
+            adicionarAoCarrinho(novo.id, modoCadastro.qtd);
+            falar(`Item ${modoCadastro.nome} cadastrado com valor de ${preco} reais e adicionado ao pedido.`);
+            modoCadastro.ativo = false;
+            renderProdutos();
+            return;
+        }
+    }
+
+    if (fala.includes("limpar") || fala.includes("limpe")) {
         carrinho = []; renderCarrinho();
-        perguntandoLimpar = false;
-        falar("Pedido limpo com sucesso.");
+        falar("Pedido limpo.");
         setTimeout(() => alternarEscuta(false), 1000);
         return;
     }
 
-    if (perguntandoLimpar && fala.includes("não")) {
-        perguntandoLimpar = false;
-        falar("Entendido, mantendo o pedido.");
-        return;
-    }
-
-    // COMANDO TOTAL
     if (fala.includes("total")) {
         const t = carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0);
-        perguntandoLimpar = true;
-        falar(`O total é ${t.toFixed(2)} reais. Deseja limpar o pedido todo?`);
+        falar(`O total deu ${t.toFixed(2)} reais. Deseja limpar tudo?`);
         return;
     }
 
-    // PROCESSAR ITENS
-    let partes = fala.split(/ e | mais | \+ /);
-    
-    partes.forEach(parte => {
-        let qtd = 1;
-        const numMatch = parte.match(/\d+/);
-        if (numMatch) qtd = parseInt(numMatch[0]);
+    // PROCESSAR ADICIONAR
+    if (fala.includes("adicione") || fala.includes("queria") || fala.includes("quero")) {
+        let partes = fala.split(/ e | mais | \+ /);
+        
+        partes.forEach(parte => {
+            let qtd = 1;
+            let numMatch = parte.match(/\d+/);
+            if (numMatch) qtd = parseInt(numMatch[0]);
+            else if (parte.includes("um") || parte.includes("uma")) qtd = 1;
 
-        let busca = parte.replace(/\d+|x |vezes |vez |quero |me dá |adicione /g, "").trim();
-        if (busca.length < 3) return;
+            let busca = parte.replace(/adicione |quero |me dá |um |uma |x |vezes /g, "").trim();
+            if (busca.length < 2) return;
 
-        // Filtra opções que contenham a palavra dita
-        let opcoes = produtos.filter(p => p.nome.toLowerCase().includes(busca));
+            let itemEncontrado = produtos.find(p => p.nome.toLowerCase() === busca || p.nome.toLowerCase().includes(busca));
 
-        if (opcoes.length === 1) {
-            // Se só tem um, adiciona direto
-            adicionarAoCarrinho(opcoes[0].id, qtd);
-            falar(`Adicionado ${qtd} ${opcoes[0].nome}.`);
-        } else if (opcoes.length > 1) {
-            // Se tem mais de um (ex: Café Puro e Café com Leite), ela pergunta qual
-            let nomes = opcoes.map(o => o.nome).join(" ou ");
-            falar(`Você quer ${nomes}? Por favor, fale o nome completo.`);
-        } else {
-            // Se não tem nada a ver com o cardápio, ela ignora em silêncio 
-            // a menos que pareça uma tentativa de pedido
-            if(fala.includes("adicione") || fala.includes("quero")) {
-                falar("Esse item não está no cardápio.");
+            if (itemEncontrado) {
+                adicionarAoCarrinho(itemEncontrado.id, qtd);
+                falar(`Ok, ${qtd} ${itemEncontrado.nome}.`);
+            } else {
+                // SE NÃO TEM NO CARDÁPIO, PERGUNTA SE QUER CRIAR
+                modoCadastro.ativo = true;
+                modoCadastro.nome = busca.charAt(0).toUpperCase() + busca.slice(1);
+                modoCadastro.qtd = qtd;
+                falar(`O item ${busca} não está no cardápio. Deseja cadastrar? Se sim, diga apenas o valor.`);
             }
-        }
-    });
+        });
+    }
 };
 
-recognition.onend = () => {
-    const btn = document.getElementById('btnVoz');
-    if (btn.classList.contains('ouvindo')) recognition.start();
-};
+recognition.onend = () => { if(document.getElementById('btnVoz').classList.contains('ouvindo')) recognition.start(); };
 
 function alternarEscuta(forcar) {
     const btn = document.getElementById('btnVoz');
@@ -160,7 +150,7 @@ function alternarEscuta(forcar) {
     if (ligar) {
         try { recognition.start(); } catch(e){}
         btn.classList.add('ouvindo');
-        legenda("🎙️ Ouvindo...");
+        legenda("🎙️ Atendente ligada...");
     } else {
         recognition.stop();
         btn.classList.remove('ouvindo');
@@ -168,7 +158,6 @@ function alternarEscuta(forcar) {
     }
 }
 
-// --- LOGICA PDV ---
 function adicionarAoCarrinho(id, qtd = 1) {
     const p = produtos.find(x => x.id === id);
     const ex = carrinho.find(i => i.id === id);
@@ -181,10 +170,7 @@ function renderCarrinho() {
     const box = document.getElementById('totalBox');
     if (!carrinho.length) { lista.innerHTML = ''; box.style.display = 'none'; return; }
     lista.innerHTML = carrinho.map(i => `
-        <div style="background:#fff; padding:10px; margin-bottom:5px; border-radius:10px; display:flex; justify-content:space-between">
-            <span>${i.qtd}x <strong>${i.nome}</strong></span>
-            <strong>R$ ${(i.preco * i.qtd).toFixed(2)}</strong>
-        </div>
+        <div class="p-linha"><span>${i.qtd}x <strong>${i.nome}</strong></span><strong>R$ ${(i.preco * i.qtd).toFixed(2)}</strong></div>
     `).join('');
     const total = carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0);
     document.getElementById('txtTotal').textContent = `R$ ${total.toFixed(2).replace('.',',')}`;
@@ -194,8 +180,7 @@ function renderCarrinho() {
 function renderProdutos() {
     document.getElementById('produtosGrid').innerHTML = produtos.map(p => `
         <div class="produto-card" onclick="adicionarAoCarrinho(${p.id})">
-            <div>${p.nome}</div>
-            <div style="color:#e63946">R$ ${p.preco.toFixed(2)}</div>
+            <div>${p.nome}</div><div style="color:#e63946">R$ ${p.preco.toFixed(2)}</div>
         </div>
     `).join('');
 }
@@ -206,7 +191,6 @@ function salvarPendente() {
     carrinho = []; document.getElementById('nomeCliente').value = "";
     localStorage.setItem('lc_pend', JSON.stringify(pendentes));
     renderCarrinho(); renderPendentes();
-    falar("Salvo.");
 }
 
 function renderPendentes() {
@@ -214,9 +198,8 @@ function renderPendentes() {
     div.innerHTML = pendentes.map(p => `
         <div style="background:white; padding:15px; border-radius:15px; margin-bottom:10px; border-left:5px solid #e63946">
             <div style="display:flex; justify-content:space-between; font-weight:bold"><span>👤 ${p.cliente}</span><span>R$ ${p.total.toFixed(2)}</span></div>
-            <div style="margin:8px 0">${p.itens.map(i => `<div class="p-linha"><span>${i.qtd}x ${i.nome}</span><span>R$ ${(i.preco*i.qtd).toFixed(2)}</span></div>`).join('')}</div>
-            <button onclick="reabrir(${p.id})" style="padding:8px 15px; border-radius:8px; border:none; background:#eee">Abrir</button>
-            <button onclick="pagar(${p.id})" style="padding:8px 15px; border-radius:8px; border:none; background:#2e7d32; color:white">Pagar</button>
+            <button onclick="reabrir(${p.id})" style="margin-top:10px; padding:5px 10px">Abrir</button>
+            <button onclick="pagar(${p.id})" style="background:#2e7d32; color:white; padding:5px 10px; border:none; border-radius:5px">Pagar</button>
         </div>
     `).join('');
     document.getElementById('badgePend').textContent = pendentes.length;
@@ -240,9 +223,9 @@ function pagar(id) {
 
 function renderCardapio() {
     document.getElementById('listaGerenciar').innerHTML = produtos.map(p => `
-        <div style="background:white; padding:10px; border-radius:8px; margin-bottom:5px; display:flex; justify-content:space-between">
+        <div style="background:white; padding:10px; margin-bottom:5px; display:flex; justify-content:space-between">
             <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
-            <button onclick="remover(${p.id})" style="border:none; background:none">🗑️</button>
+            <button onclick="remover(${p.id})">🗑️</button>
         </div>
     `).join('');
 }
