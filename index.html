@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#e63946">
-<title>Lanches Cardoso - PDV v4.9 Expert</title>
+<title>Lanches Cardoso - PDV v5.0 Master</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
   body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; color: #222; padding-bottom: 120px; }
@@ -19,7 +19,7 @@
   .btn-voz.ouvindo { background: #2e7d32; animation: pulse 1s infinite; }
   @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(46,125,50,0.7); } 70% { box-shadow: 0 0 0 15px rgba(46,125,50,0); } 100% { box-shadow: 0 0 0 0 rgba(46,125,50,0); } }
   .produtos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-  .produto-card { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; }
+  .produto-card { background: white; border-radius: 12px; padding: 12px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); font-weight: bold; border: 1px solid #eee; }
   .p-linha { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #ccc; }
 </style>
 </head>
@@ -55,10 +55,15 @@
     <div id="listaGerenciar"></div>
 </div>
 
-<div class="legenda-container" id="legenda">🎙️ Clique para iniciar...</div>
+<div class="legenda-container" id="legenda">🎙️ Clique no microfone...</div>
 
 <script>
-let produtos = JSON.parse(localStorage.getItem('lanches_cardoso_produtos')) || [{ id: 1, nome: 'Café Puro', preco: 4.0 }];
+// Tenta recuperar de todas as chaves possíveis para garantir que o cardápio volte
+let produtos = JSON.parse(localStorage.getItem('lanches_cardoso_produtos')) || 
+               JSON.parse(localStorage.getItem('lc_prods')) || 
+               JSON.parse(localStorage.getItem('produtos_v3')) || 
+               [{ id: 1, nome: 'Café Puro', preco: 4.0 }];
+
 let carrinho = [];
 let pendentes = JSON.parse(localStorage.getItem('lc_pend')) || [];
 let modoCadastro = { ativo: false, nome: '', qtd: 1 };
@@ -82,64 +87,75 @@ function falar(texto) {
 }
 
 recognition.onresult = (event) => {
-    let fala = event.results[event.results.length - 1][0].transcript.toLowerCase();
-    legenda("Ouvi: " + fala);
+    let falaOriginal = event.results[event.results.length - 1][0].transcript.toLowerCase();
+    legenda("Ouvi: " + falaOriginal);
 
-    // MODO CADASTRO DE ITEM NOVO (PEDIR VALOR)
+    // MODO CADASTRO (QUANDO ELA ESTÁ ESPERANDO O VALOR)
     if (modoCadastro.ativo) {
-        let preco = parseFloat(fala.replace(',', '.').match(/[+-]?\d+(\.\d+)?/));
+        let preco = parseFloat(falaOriginal.replace(',', '.').match(/[+-]?\d+(\.\d+)?/));
         if (!isNaN(preco)) {
-            let novo = { id: Date.now(), nome: modoCadastro.nome, preco: preco };
-            produtos.push(novo);
+            let novoItem = { id: Date.now(), nome: modoCadastro.nome, preco: preco };
+            produtos.push(novoItem);
             localStorage.setItem('lanches_cardoso_produtos', JSON.stringify(produtos));
-            adicionarAoCarrinho(novo.id, modoCadastro.qtd);
-            falar(`Item ${modoCadastro.nome} cadastrado com valor de ${preco} reais e adicionado ao pedido.`);
+            adicionarAoCarrinho(novoItem.id, modoCadastro.qtd);
+            falar(`Item ${modoCadastro.nome} cadastrado e adicionado.`);
             modoCadastro.ativo = false;
             renderProdutos();
             return;
         }
     }
 
-    if (fala.includes("limpar") || fala.includes("limpe")) {
+    // COMANDOS DE CONTROLE
+    if (falaOriginal.includes("limpar") || falaOriginal.includes("limpe")) {
         carrinho = []; renderCarrinho();
         falar("Pedido limpo.");
         setTimeout(() => alternarEscuta(false), 1000);
         return;
     }
 
-    if (fala.includes("total")) {
+    if (falaOriginal.includes("total")) {
         const t = carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0);
-        falar(`O total deu ${t.toFixed(2)} reais. Deseja limpar tudo?`);
+        falar(`O total é ${t.toFixed(2)} reais.`);
         return;
     }
 
-    // PROCESSAR ADICIONAR
-    if (fala.includes("adicione") || fala.includes("queria") || fala.includes("quero")) {
-        let partes = fala.split(/ e | mais | \+ /);
+    // LÓGICA DE PROCESSAMENTO DE ITENS (AQUI FOI O CONSERTO)
+    let partes = falaOriginal.split(/ e | mais | \+ /);
+    
+    partes.forEach(parte => {
+        // 1. Extrair quantidade e limpar a frase
+        let qtd = 1;
+        let numMatch = parte.match(/\d+/);
+        if (numMatch) {
+            qtd = parseInt(numMatch[0]);
+        } else {
+            if (parte.includes("um") || parte.includes("uma")) qtd = 1;
+        }
+
+        // 2. Isolar o nome do produto (remover comandos e números)
+        // Isso impede que "1x café" seja buscado como "1x café" e sim como "café"
+        let busca = parte.replace(/adicione |adiciona |quero |me dá |um |uma |x |vezes |vez /g, "").replace(/\d+/g, "").trim();
         
-        partes.forEach(parte => {
-            let qtd = 1;
-            let numMatch = parte.match(/\d+/);
-            if (numMatch) qtd = parseInt(numMatch[0]);
-            else if (parte.includes("um") || parte.includes("uma")) qtd = 1;
+        if (busca.length < 2) return;
 
-            let busca = parte.replace(/adicione |quero |me dá |um |uma |x |vezes /g, "").trim();
-            if (busca.length < 2) return;
+        // 3. Procurar no cardápio pelo nome limpo
+        let itemEncontrado = produtos.find(p => 
+            p.nome.toLowerCase() === busca || 
+            p.nome.toLowerCase().includes(busca) ||
+            busca.includes(p.nome.toLowerCase())
+        );
 
-            let itemEncontrado = produtos.find(p => p.nome.toLowerCase() === busca || p.nome.toLowerCase().includes(busca));
-
-            if (itemEncontrado) {
-                adicionarAoCarrinho(itemEncontrado.id, qtd);
-                falar(`Ok, ${qtd} ${itemEncontrado.nome}.`);
-            } else {
-                // SE NÃO TEM NO CARDÁPIO, PERGUNTA SE QUER CRIAR
-                modoCadastro.ativo = true;
-                modoCadastro.nome = busca.charAt(0).toUpperCase() + busca.slice(1);
-                modoCadastro.qtd = qtd;
-                falar(`O item ${busca} não está no cardápio. Deseja cadastrar? Se sim, diga apenas o valor.`);
-            }
-        });
-    }
+        if (itemEncontrado) {
+            adicionarAoCarrinho(itemEncontrado.id, qtd);
+            falar(`Adicionado ${qtd} ${itemEncontrado.nome}.`);
+        } else {
+            // SÓ ENTRA AQUI SE REALMENTE NÃO EXISTIR NO CARDÁPIO
+            modoCadastro.ativo = true;
+            modoCadastro.nome = busca.charAt(0).toUpperCase() + busca.slice(1);
+            modoCadastro.qtd = qtd;
+            falar(`O item ${busca} não existe. Deseja cadastrar? Se sim, diga o valor.`);
+        }
+    });
 };
 
 recognition.onend = () => { if(document.getElementById('btnVoz').classList.contains('ouvindo')) recognition.start(); };
@@ -186,11 +202,12 @@ function renderProdutos() {
 }
 
 function salvarPendente() {
-    const cliente = document.getElementById('nomeCliente').value || "Cliente";
+    const cliente = document.getElementById('nomeCliente').value || "Balcão";
     pendentes.push({ id: Date.now(), cliente, itens: [...carrinho], total: carrinho.reduce((s, i) => s + (i.preco * i.qtd), 0) });
     carrinho = []; document.getElementById('nomeCliente').value = "";
     localStorage.setItem('lc_pend', JSON.stringify(pendentes));
     renderCarrinho(); renderPendentes();
+    falar("Pedido de " + cliente + " salvo.");
 }
 
 function renderPendentes() {
@@ -198,8 +215,8 @@ function renderPendentes() {
     div.innerHTML = pendentes.map(p => `
         <div style="background:white; padding:15px; border-radius:15px; margin-bottom:10px; border-left:5px solid #e63946">
             <div style="display:flex; justify-content:space-between; font-weight:bold"><span>👤 ${p.cliente}</span><span>R$ ${p.total.toFixed(2)}</span></div>
-            <button onclick="reabrir(${p.id})" style="margin-top:10px; padding:5px 10px">Abrir</button>
-            <button onclick="pagar(${p.id})" style="background:#2e7d32; color:white; padding:5px 10px; border:none; border-radius:5px">Pagar</button>
+            <button onclick="reabrir(${p.id})" style="margin-top:10px; padding:5px 10px; border:none; border-radius:5px">Reabrir</button>
+            <button onclick="pagar(${p.id})" style="background:#2e7d32; color:white; padding:5px 10px; border:none; border-radius:5px; float:right">Pagar</button>
         </div>
     `).join('');
     document.getElementById('badgePend').textContent = pendentes.length;
@@ -223,17 +240,19 @@ function pagar(id) {
 
 function renderCardapio() {
     document.getElementById('listaGerenciar').innerHTML = produtos.map(p => `
-        <div style="background:white; padding:10px; margin-bottom:5px; display:flex; justify-content:space-between">
+        <div style="background:white; padding:10px; margin-bottom:5px; display:flex; justify-content:space-between; border-radius:8px">
             <span>${p.nome} - R$ ${p.preco.toFixed(2)}</span>
-            <button onclick="remover(${p.id})">🗑️</button>
+            <button onclick="remover(${p.id})" style="background:none; border:none">🗑️</button>
         </div>
     `).join('');
 }
 
 function remover(id) {
-    produtos = produtos.filter(x => x.id !== id);
-    localStorage.setItem('lanches_cardoso_produtos', JSON.stringify(produtos));
-    renderCardapio(); renderProdutos();
+    if(confirm("Excluir item?")) {
+        produtos = produtos.filter(x => x.id !== id);
+        localStorage.setItem('lanches_cardoso_produtos', JSON.stringify(produtos));
+        renderCardapio(); renderProdutos();
+    }
 }
 
 function abrirAdd() {
